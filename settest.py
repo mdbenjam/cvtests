@@ -43,6 +43,8 @@ toShow = 'edges'
 
 cv2.imshow("w1", img1)
 
+disp_quad = 0
+
 lasterr = None
 while True:
     try:
@@ -101,18 +103,12 @@ while True:
                         #if 0 <= x <= width and 0 <= y <= height:
                             these_intersections.append([x,y,i,j])
                             intersections[j].append([x,y,i,j])
-            intersections.append(these_intersections)
-
-        def comp(p1, p2):
-            if (p1[0] < p2[0]):
-                return True
-            elif (p1[0] == p2[0]):
-                if (p1[1] < p2[2]):
-                    return True
-            return False
+            intersections[i].extend(these_intersections)
 
         for i in range(len(intersections)):
-            intersections[i] = sorted(intersections[i], cmp = comp)
+            intersections[i] = sorted(intersections[i], key = lambda x: x[1])
+            intersections[i] = sorted(intersections[i], key = lambda x: x[0])
+            print intersections[i]
 
         quads = []
 
@@ -137,42 +133,70 @@ while True:
                 q.append([inter[0],inter[1]])
             return q
 
+        search_range = 3
+
         for i in range(len(intersections)):
             for j in range(len(intersections[i])):
                 other = get_other_index(intersections[i][j], i)
                 
                 index = find_intersection_index(intersections[other], i)
 
-                for m in range(3):
+                for m in range(search_range):
                     m_sum = j+m+1
                     if m_sum < len(intersections[i]):
                         intersection_south = intersections[i][m_sum]
+                        #print intersections[i][j], intersection_south
                         other_index_south = get_other_index(intersection_south, i)
-                        for n in range(3):
+                        #print i,other, other_index_south
+                        for n in range(search_range):
                             n_sum = index+n+1
                             if n_sum < len(intersections[other]):
                                 intersection_east = intersections[other][n_sum]
                                 other_index_east = get_other_index(intersection_east, other)
 
+                                #print intersections[other_index_east], other_index_south
                                 found_index = find_intersection_index(intersections[other_index_east],other_index_south)
+                                #print other,i,j,other_index_south, other_index_east
                                 if found_index != -1:
-                                    quads.append(make_quad([intersection[i][j],
+                                    q = make_quad([intersections[i][j],
                                                             intersection_east,
-                                                            intersection_south,
-                                                            intersections[other_index_east][found_index]]))
+                                                            intersections[other_index_east][found_index],
+                                                            intersection_south])
+                                    length = []
+                                    flag = False
+                                    for o in range(len(q)):
+                                        p = (o + 1) % len(q)
+                                        x1, y1 = q[o]
+                                        x2, y2 = q[p]
+                                        l = (x1-x2)**2+(y1-y2)**2
+                                        length.append(l)
+                                        if l <= 100:
+                                            flag = True
+                                    for o in range(len(length)):
+                                        p = (o + 1) % len(q)
+                                        l1 = length[o]
+                                        l2 = length[p]
+                                        if not (.25 < l1/l2 < 4):
+                                            flag = True
+                                    
+                                    if not flag:
+                                        quads.append(q)
 
 
         print len(intersections)
+        print len(quads)
+
 
         if toShow != 'edges':
             img1 = cv2.imread('setcards.jpg')
             img2 = np.zeros(img1.shape)
 
-            for q in quads:
-                cv2.fillConvextPoly(img1,q,(0,0,100))
-                cv2.fillConvextPoly(img2,q,(0,0,100))
+            q = quads[disp_quad]
+            arr = [np.array(q,'int32')]
+            print arr
+            cv2.fillPoly(img1,arr,(0,0,100))
+            cv2.fillPoly(img2,arr,(0,0,100))
 
-            """
             for x1, y1, x2, y2 in segments:
                 cv2.line(img1,(x1,y1),(x2,y2),(0,0,255),2)
                 cv2.line(img2,(x1,y1),(x2,y2),(0,0,255),2)
@@ -180,7 +204,6 @@ while True:
             for x,y,i,j in [val for subl in intersections for val in subl]:
                 cv2.circle(img1, (int(x),int(y)), 3, (100, 100, 0), -1)
                 cv2.circle(img2, (int(x),int(y)), 3, (100, 100, 0), -1)
-            """
                 
         if toShow == 'edges':
             cv2.imshow("w1", edges)
@@ -232,5 +255,9 @@ while True:
         toShow = 'edges'
     elif c == ord('q'):
         exit(0)
+    elif c == ord('n'):
+        disp_quad = disp_quad + 1
+    elif c == ord('m'):
+        disp_quad = disp_quad - 1
 
 raw_input()
