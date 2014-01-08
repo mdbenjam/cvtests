@@ -2,6 +2,7 @@ import cv
 import cv2
 import math
 import numpy as np
+from sets import Set
 
 cv2.namedWindow("w1", cv.CV_WINDOW_AUTOSIZE)
 
@@ -108,9 +109,8 @@ while True:
         for i in range(len(intersections)):
             intersections[i] = sorted(intersections[i], key = lambda x: x[1])
             intersections[i] = sorted(intersections[i], key = lambda x: x[0])
-            print intersections[i]
 
-        quads = []
+        quads = Set([])
 
         def find_intersection_index(intersection, i):
             for k in range(len(intersection)):
@@ -130,10 +130,10 @@ while True:
         def make_quad(intersections):
             q = []
             for inter in intersections:
-                q.append([inter[0],inter[1]])
-            return q
+                q.append((int(inter[0]),int(inter[1])))
+            return (q[0], q[1], q[2], q[3])
 
-        search_range = 3
+        search_range = 2
 
         for i in range(len(intersections)):
             for j in range(len(intersections[i])):
@@ -170,17 +170,18 @@ while True:
                                         x2, y2 = q[p]
                                         l = (x1-x2)**2+(y1-y2)**2
                                         length.append(l)
-                                        if l <= 100:
+                                        if l <= 400:
                                             flag = True
-                                    for o in range(len(length)):
-                                        p = (o + 1) % len(q)
-                                        l1 = length[o]
-                                        l2 = length[p]
-                                        if not (.25 < l1/l2 < 4):
-                                            flag = True
+                                    if not flag:
+                                        for o in range(len(length)):
+                                            p = (o + 1) % len(q)
+                                            l1 = length[o]
+                                            l2 = float(length[p])
+                                            if not (.25 < l1/l2 < 4):
+                                                flag = True
                                     
                                     if not flag:
-                                        quads.append(q)
+                                        quads.add(q)
 
 
         print len(intersections)
@@ -191,11 +192,15 @@ while True:
             img1 = cv2.imread('setcards.jpg')
             img2 = np.zeros(img1.shape)
 
-            q = quads[disp_quad]
-            arr = [np.array(q,'int32')]
-            print arr
-            cv2.fillPoly(img1,arr,(0,0,100))
-            cv2.fillPoly(img2,arr,(0,0,100))
+            index = 0
+            for q in quads:
+                if disp_quad == index:
+                    arr = [np.array(q,'int32')]
+                    print arr
+                    cv2.fillPoly(img1,arr,(0,0,100))
+                    cv2.fillPoly(img2,arr,(0,0,100))
+                    break
+                index = index + 1
 
             for x1, y1, x2, y2 in segments:
                 cv2.line(img1,(x1,y1),(x2,y2),(0,0,255),2)
